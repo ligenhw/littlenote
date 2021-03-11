@@ -15,14 +15,16 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Slf4j
-@Service
 public class DbUserDetailsService implements UserDetailsService {
 
-    @Autowired
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
+
+    public DbUserDetailsService(UserMapper userMapper, PasswordEncoder passwordEncoder) {
+        this.userMapper = userMapper;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
