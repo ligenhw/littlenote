@@ -1,28 +1,48 @@
 package cn.bestlang.littlenote.security;
 
+import cn.bestlang.littlenote.entity.Authorities;
 import cn.bestlang.littlenote.entity.User;
+import cn.bestlang.littlenote.mapper.AuthoritiesMapper;
 import cn.bestlang.littlenote.mapper.UserMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+/**
+ * AuthenticationProvider 使用 UserDetailsService 认证
+ *
+ * 与 JdbcDaoImpl 区别
+ * 用户表结构不同
+ * 使用mybatis代替jdbc
+ */
 @Slf4j
 public class DbUserDetailsService implements UserDetailsService {
 
-    private final UserMapper userMapper;
+    protected final UserMapper userMapper;
+    protected final AuthoritiesMapper authoritiesMapper;
 
-    private final PasswordEncoder passwordEncoder;
+    protected final PasswordEncoder passwordEncoder;
 
-    public DbUserDetailsService(UserMapper userMapper, PasswordEncoder passwordEncoder) {
+    private boolean enableAuthorities = true;
+    private String rolePrefix = "";
+
+    public DbUserDetailsService(UserMapper userMapper,
+                                AuthoritiesMapper authoritiesMapper,
+                                PasswordEncoder passwordEncoder) {
         this.userMapper = userMapper;
+        this.authoritiesMapper = authoritiesMapper;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -42,15 +62,46 @@ public class DbUserDetailsService implements UserDetailsService {
         }
 
         User user = users.get(0);
+        UserDetails userDetails =
+                new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), true, true, true, true, AuthorityUtils.NO_AUTHORITIES);
 
-        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), true, true, true, true, AuthorityUtils.NO_AUTHORITIES);
+        Set<GrantedAuthority> dbAuthsSet = new HashSet<>();
+        if (this.enableAuthorities) {
+            dbAuthsSet.addAll(loadUserAuthorities(userDetails.getUsername()));
+        }
+
+        List<GrantedAuthority> dbAuths = new ArrayList<>(dbAuthsSet);
+        return createUserDetails(userDetails, user.getId(), dbAuths);
     }
 
-    public void signUp(String username, String password) {
-        String encodePassword = passwordEncoder.encode(password);
-        User user = new User();
-        user.setUsername(username);
-        user.setPassword(encodePassword);
-        userMapper.insert(user);
+    /**
+     * 返回自定义 RestUser 携带userId
+     * @param userFromUserQuery
+     * @param combinedAuthorities
+     * @return
+     */
+    protected UserDetails createUserDetails(UserDetails userFromUserQuery,
+                                            Integer userId,
+                                            List<GrantedAuthority> combinedAuthorities) {
+        String returnUsername = userFromUserQuery.getUsername();
+        return new RestUser(userId, returnUsername, userFromUserQuery.getPassword(), userFromUserQuery.isEnabled(),
+                userFromUserQuery.isAccountNonExpired(), userFromUserQuery.isCredentialsNonExpired(),
+                userFromUserQuery.isAccountNonLocked(), combinedAuthorities);
     }
+
+    /**
+     * Loads authorities by executing the SQL from <tt>authoritiesByUsernameQuery</tt>.
+     * @return a list of GrantedAuthority objects for the user
+     */
+    protected List<GrantedAuthority> loadUserAuthorities(String username) {
+        List<Authorities> authorities = authoritiesMapper.selectList(Wrappers.<Authorities>lambdaQuery().eq(Authorities::getUsername, username));
+        return authorities.stream()
+                .map(authority -> new SimpleGrantedAuthority(rolePrefix + authority.getAuthority()))
+                .collect(Collectors.toList());
+    }
+
+    protected boolean getEnableAuthorities() {
+        return this.enableAuthorities;
+    }
+
 }

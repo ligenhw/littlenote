@@ -13,6 +13,7 @@ public class SessionConfig {
 
     @Bean
     public MapSessionRepository sessionRepository() {
+         // 暂时使用内存 Session
          return new MapSessionRepository(new ConcurrentHashMap<>());
     }
 }

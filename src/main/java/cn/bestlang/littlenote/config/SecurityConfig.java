@@ -1,10 +1,8 @@
 package cn.bestlang.littlenote.config;
 
+import cn.bestlang.littlenote.mapper.AuthoritiesMapper;
 import cn.bestlang.littlenote.mapper.UserMapper;
-import cn.bestlang.littlenote.security.DbUserDetailsService;
-import cn.bestlang.littlenote.security.RestAccessDeniedHandler;
-import cn.bestlang.littlenote.security.RestAuthenticationEntryPoint;
-import cn.bestlang.littlenote.security.RestLoginAuthenticationFilter;
+import cn.bestlang.littlenote.security.*;
 import cn.bestlang.littlenote.util.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -18,10 +16,10 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter;
 
@@ -33,6 +31,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private DataSource dataSource;
+    @Autowired
+    private UserMapper userMapper;
+    @Autowired
+    AuthoritiesMapper authoritiesMapper;
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -40,14 +42,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf().disable()
                 .authorizeRequests(authorize -> authorize
                         .antMatchers("/api/v1/signup").permitAll()
+                        .mvcMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(restLoginAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+                .authenticationProvider(restDaoAuthenticationProvider())
                 .authenticationProvider(rememberMeAuthenticationProvider())
                 .rememberMe((rememberMe) ->
                         rememberMe
                                 .tokenRepository(persistentTokenRepository())
-                        .rememberMeServices(rememberMeServices(userDetailsService(), persistentTokenRepository()))
+                                .rememberMeServices(rememberMeServices(
+                                        userDetailsService(userMapper, authoritiesMapper, passwordEncoder()), persistentTokenRepository()))
                 )
                 .exceptionHandling(c -> {
                     c.accessDeniedHandler(restAccessDeniedHandler());
@@ -57,8 +62,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     @Bean
-    public UserDetailsService userDetailsService(UserMapper userMapper, PasswordEncoder passwordEncoder) {
-        return new DbUserDetailsService(userMapper, passwordEncoder);
+    public RestDaoAuthenticationProvider restDaoAuthenticationProvider() {
+        RestDaoAuthenticationProvider restDaoAuthenticationProvider = new RestDaoAuthenticationProvider();
+        restDaoAuthenticationProvider.setUserDetailsService(userDetailsService(userMapper, authoritiesMapper, passwordEncoder()));
+        return restDaoAuthenticationProvider;
+    }
+
+    @Bean
+    public UserDetailsManager userDetailsService(UserMapper userMapper,
+                                                 AuthoritiesMapper authoritiesMapper,
+                                                 PasswordEncoder passwordEncoder) {
+        return new DbUserDetailsManager(userMapper, authoritiesMapper, passwordEncoder);
     }
 
     @Bean
@@ -68,7 +82,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public RememberMeServices rememberMeServices(UserDetailsService userDetailsService, PersistentTokenRepository persistentTokenRepository) {
-        return new PersistentTokenBasedRememberMeServices("springRocks", userDetailsService, persistentTokenRepository);
+        return new PersistentTokenBasedRememberMeServicesAuthentication("springRocks", userDetailsService, persistentTokenRepository);
     }
 
 //    @Bean

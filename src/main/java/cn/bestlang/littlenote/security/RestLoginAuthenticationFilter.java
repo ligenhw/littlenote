@@ -14,6 +14,15 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * 与 UsernamePasswordAuthenticationFilter 区别
+ * 修改登陆 path
+ * 修改登陆 请求参数解析方式
+ *
+ * 提取 username password 封装到UsernamePasswordAuthenticationToken 中，
+ * 具体认证委托 AuthenticationManager 完成
+ * AuthenticationProvider 默认使用 DaoAuthenticationProvider
+ */
 public class RestLoginAuthenticationFilter extends AbstractAuthenticationProcessingFilter {
 
     private static final AntPathRequestMatcher DEFAULT_ANT_PATH_REQUEST_MATCHER = new AntPathRequestMatcher("/api/v1/login", "POST");
@@ -23,7 +32,7 @@ public class RestLoginAuthenticationFilter extends AbstractAuthenticationProcess
     }
 
     @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException, IOException, ServletException {
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
         //use jackson to deserialize json
         ObjectMapper mapper = new ObjectMapper();
         UsernamePasswordAuthenticationToken authRequest = null;

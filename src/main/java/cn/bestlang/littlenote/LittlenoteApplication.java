@@ -4,7 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@MapperScan("cn.bestlang.littlenote.mapper")
+@MapperScan(basePackages = {"cn.bestlang.littlenote.mapper", "cn.bestlang.littlenote.account.mapper"})
 @SpringBootApplication
 public class LittlenoteApplication {
 

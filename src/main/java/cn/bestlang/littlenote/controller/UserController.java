@@ -1,13 +1,18 @@
 package cn.bestlang.littlenote.controller;
 
+import cn.bestlang.littlenote.entity.User;
+import cn.bestlang.littlenote.mapper.UserMapper;
 import cn.bestlang.littlenote.model.SignUpReq;
-import cn.bestlang.littlenote.security.DbUserDetailsService;
+import cn.bestlang.littlenote.security.DbUserDetailsManager;
+import cn.bestlang.littlenote.security.RestUser;
 import cn.bestlang.littlenote.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -16,21 +21,32 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     @Autowired
-    private DbUserDetailsService dbUserDetailsService;
+    private DbUserDetailsManager dbUserDetailsManager;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @GetMapping("/user")
-    public String userInfo() {
+    public User userInfo() {
         SecurityContext context = SecurityContextHolder.getContext();
         Authentication authentication = context.getAuthentication();
-        String username = authentication.getName();
+        RestUser restUser = (RestUser) authentication.getDetails();
 
-        return username;
+        User user = userMapper.selectById(restUser.getUserId());
+        user.setPassword(null);
+        return user;
     }
 
+    // TODO: 使用 spring security filter 实现
     @PostMapping("/signup")
-    public String signUp(@RequestBody SignUpReq signUpReq) {
+    public void signUp(@Validated @RequestBody SignUpReq signUpReq) {
         log.info("signup", JsonUtil.toJson(signUpReq));
-        dbUserDetailsService.signUp(signUpReq.getUsername(), signUpReq.getPassword());
-        return "ok";
+        UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername(signUpReq.getUsername())
+                .password(signUpReq.getPassword())
+                .roles("USER") // 注册用户的默认角色
+                .build();
+
+        dbUserDetailsManager.createUser(userDetails);
     }
 }
