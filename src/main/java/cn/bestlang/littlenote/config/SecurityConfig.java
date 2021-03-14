@@ -6,6 +6,7 @@ import cn.bestlang.littlenote.security.*;
 import cn.bestlang.littlenote.util.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,6 +27,7 @@ import org.springframework.security.web.authentication.rememberme.RememberMeAuth
 import javax.sql.DataSource;
 import java.io.PrintWriter;
 
+@Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
@@ -69,7 +71,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     @Bean
-    public UserDetailsManager userDetailsService(UserMapper userMapper,
+    public DbUserDetailsManager userDetailsService(UserMapper userMapper,
                                                  AuthoritiesMapper authoritiesMapper,
                                                  PasswordEncoder passwordEncoder) {
         return new DbUserDetailsManager(userMapper, authoritiesMapper, passwordEncoder);

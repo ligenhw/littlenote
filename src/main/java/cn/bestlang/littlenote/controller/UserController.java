@@ -1,16 +1,13 @@
 package cn.bestlang.littlenote.controller;
 
+import cn.bestlang.littlenote.context.UserContext;
 import cn.bestlang.littlenote.entity.User;
 import cn.bestlang.littlenote.mapper.UserMapper;
 import cn.bestlang.littlenote.model.SignUpReq;
 import cn.bestlang.littlenote.security.DbUserDetailsManager;
-import cn.bestlang.littlenote.security.RestUser;
 import cn.bestlang.littlenote.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -28,11 +25,7 @@ public class UserController {
 
     @GetMapping("/user")
     public User userInfo() {
-        SecurityContext context = SecurityContextHolder.getContext();
-        Authentication authentication = context.getAuthentication();
-        RestUser restUser = (RestUser) authentication.getDetails();
-
-        User user = userMapper.selectById(restUser.getUserId());
+        User user = userMapper.selectById(UserContext.getId());
         user.setPassword(null);
         return user;
     }

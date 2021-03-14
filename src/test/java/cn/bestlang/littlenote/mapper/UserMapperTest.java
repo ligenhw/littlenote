@@ -1,15 +1,20 @@
 package cn.bestlang.littlenote.mapper;
 
 import cn.bestlang.littlenote.entity.User;
+import cn.bestlang.littlenote.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 @Slf4j
 @SpringBootTest
+@AutoConfigureTestDatabase
 class UserMapperTest {
 
     @Autowired
@@ -26,16 +31,17 @@ class UserMapperTest {
     }
 
     @Test
+    void testSelect() {
+        List<User> users = userMapper.selectList(null);
+        users.forEach(u -> log.info(JsonUtil.toJson(u)));
+        assertThat(users).hasSize(1);
+    }
+
+    @Test
     void testInsert() {
         userMapper.insert(createUser());
     }
 
-    @Test
-    void testSelect() {
-        List<User> users = userMapper.selectList(null);
-
-        users.forEach(u -> log.info("" + u));
-    }
 
     @Test
     void testUpdate() {
